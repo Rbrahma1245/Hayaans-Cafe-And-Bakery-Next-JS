@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+server/node_modules
+
+# Build output
+.next
+out
+dist
+
+# Secrets and server data (never upload these)
+.env
+.env.local
+server/.env
+server/data
+server/uploads
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
