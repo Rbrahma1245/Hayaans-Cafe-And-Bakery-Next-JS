@@ -11,8 +11,8 @@ dist
 .env
 .env.local
 server/.env
-server/data
-server/uploads
+# server/data
+# server/uploads
 
 # Logs
 *.log
