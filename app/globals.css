@@ -1057,8 +1057,71 @@ footer p { margin: 0; }
 /* Inventory Cards Grid */
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.inventory-pagination {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  padding: 20px 0 8px;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pagination-btn,
+.pagination-page {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #44403c;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-page {
+  padding: 0;
+}
+
+.pagination-btn:hover:not(:disabled),
+.pagination-page:hover:not(.active) {
+  background: #fdf2f4;
+  border-color: #d9a5ae;
+}
+
+.pagination-page.active {
+  background: #b85c6a;
+  color: #fff;
+  border-color: #b85c6a;
+}
+
+.pagination-page.active:hover {
+  background: #b85c6a;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  text-align: center;
+  margin-top: 8px;
+  color: #78716c;
+  font-size: 13px;
 }
 
 .inventory-card {
@@ -1075,6 +1138,33 @@ footer p { margin: 0; }
 .inventory-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 1200px) {
+  .inventory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-pagination {
+    gap: 6px;
+  }
+
+  .pagination-btn {
+    padding: 0 8px;
+    font-size: 13px;
+  }
 }
 
 .card-media-wrap {
@@ -1148,15 +1238,21 @@ footer p { margin: 0; }
 }
 
 .card-desc {
-  font-size: 0.825rem;
-  color: #64748b;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.4;
+  margin: 8px 0 0;
+  color: #78716c;
+  font-size: 0.85rem;
+  line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  display: box;
   -webkit-box-orient: vertical;
+  box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
+  min-height: 4.5em;
+  max-height: 4.5em;
 }
+
 
 .size-chips-preview {
   display: flex;
@@ -1286,4 +1382,238 @@ footer p { margin: 0; }
 
 .login-btn:hover {
   background-color: #b45309;
+}
+
+
+
+
+
+
+/* =========================================================
+   BAKERY HERO FLOATING ITEMS
+   Premium / soft / playful animation
+========================================================= */
+
+/* =========================================
+   PHONE RINGING / ATTENTION ANIMATION
+========================================= */
+
+.hero-ring-button {
+  animation: buttonRing 3.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+
+.hero-button {
+  animation: heroButtonIn 0.7s ease-out both;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+  will-change: transform;
+}
+
+/* Primary appears first */
+.hero-button-primary {
+  animation-delay: 0.15s;
+}
+
+/* Secondary appears slightly later */
+.hero-button-secondary {
+  animation-delay: 0.3s;
+}
+
+.bakery-float {
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+
+  animation: bakeryFloat 4s ease-in-out infinite;
+
+  will-change: transform;
+}
+
+/* Different timing for each item */
+.bakery-float-delay-1 {
+  animation-delay: 0s;
+}
+
+.bakery-float-delay-2 {
+  animation-delay: -1s;
+}
+
+.bakery-float-delay-3 {
+  animation-delay: -2s;
+}
+
+.bakery-float-delay-4 {
+  animation-delay: -3s;
+}
+
+
+/* Up and down only */
+@keyframes bakeryFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+
+/* Mobile */
+@media (max-width: 600px) {
+  .bakery-float {
+    animation-duration: 4.5s;
+  }
+}
+
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bakery-float {
+    animation: none;
+  }
+}
+
+
+
+/* Entrance animation */
+@keyframes heroButtonIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Hover animation */
+.hero-button:hover {
+  transform: translateY(-3px);
+}
+
+
+/* Click animation */
+.hero-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+
+/* =========================================
+   PRIMARY BUTTON
+========================================= */
+
+.hero-button-primary:hover {
+  box-shadow:
+    0 12px 28px rgba(217, 119, 6, 0.28),
+    0 4px 8px rgba(120, 53, 15, 0.08);
+}
+
+
+/* =========================================
+   SECONDARY BUTTON
+========================================= */
+
+.hero-button-secondary:hover {
+  box-shadow: 0 8px 20px rgba(120, 53, 15, 0.08);
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+  .hero-button:hover {
+    transform: translateY(-2px);
+  }
+}
+
+
+/* =========================================
+   ACCESSIBILITY
+========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-button {
+    animation: none;
+    transition: none;
+  }
+
+  .hero-button:hover,
+  .hero-button:active {
+    transform: none;
+  }
+}
+
+
+/* =========================================
+   PHONE RINGING / ATTENTION ANIMATION
+========================================= */
+
+.hero-ring-button {
+  animation: buttonRing 3.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+
+/* Phone ringing effect */
+@keyframes buttonRing {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  72% {
+    transform: rotate(-3deg);
+  }
+
+  74% {
+    transform: rotate(3deg);
+  }
+
+  76% {
+    transform: rotate(-4deg);
+  }
+
+  78% {
+    transform: rotate(4deg);
+  }
+
+  80% {
+    transform: rotate(-3deg);
+  }
+
+  82% {
+    transform: rotate(2deg);
+  }
+
+  84% {
+    transform: rotate(0deg);
+  }
+}
+
+
+/* Hover */
+.hero-ring-button:hover {
+  animation-play-state: paused;
+}
+
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .hero-ring-button {
+    animation: none;
+  }
 }

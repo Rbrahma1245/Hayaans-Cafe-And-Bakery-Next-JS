@@ -21,7 +21,9 @@ import {
   Chip,
   Grid,
 } from "@mui/material";
+
 import ConfirmDialog from "@/components/confirm-dialog";
+
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -36,6 +38,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 import SweetFormEditor from "./SweetFormEditor";
 import SweetsInventoryList from "./SweetsInventoryList";
+import StatusCard from "../../components/StatusCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -55,17 +58,32 @@ const emptyForm = {
 export default function AdminPage() {
   const [token, setToken] = useState(null);
   const [ready, setReady] = useState(false);
+
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+
   const [sweets, setSweets] = useState([]);
+  const [deletedSweets, setDeletedSweets] = useState([]);
+
   const [form, setForm] = useState(emptyForm);
+
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
     id: null,
   });
+
+  const [selectedStatus, setSelectedStatus] = useState("total-items");
+
+  const [enablingId, setEnablingId] = useState(null);
+
+  /* ============================================================
+     SESSION
+  ============================================================ */
 
   useEffect(() => {
     setToken(sessionStorage.getItem("adminToken"));
@@ -73,22 +91,47 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (token) loadSweets();
+    if (token) {
+      loadSweets();
+      loadDeletedSweets();
+    }
   }, [token]);
+
+  /* ============================================================
+     LOGOUT
+  ============================================================ */
 
   function logout(text) {
     sessionStorage.removeItem("adminToken");
+
     setToken(null);
     setSweets([]);
+    setDeletedSweets([]);
     setForm(emptyForm);
     setIsModalOpen(false);
-    if (text) setMessage({ type: "error", text });
+
+    if (text) {
+      setMessage({
+        type: "error",
+        text,
+      });
+    }
   }
+
+  /* ============================================================
+     API
+  ============================================================ */
 
   async function call(path, { method = "GET", body, form: formData } = {}) {
     const headers = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-    if (body) headers["Content-Type"] = "application/json";
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (body) {
+      headers["Content-Type"] = "application/json";
+    }
 
     const res = await fetch(`${API}${path}`, {
       method,
@@ -96,44 +139,95 @@ export default function AdminPage() {
       cache: "no-store",
       body: formData ?? (body ? JSON.stringify(body) : undefined),
     });
-  
 
     if (res.status === 401 && token) {
       logout("Your session ended. Please log in again.");
+
       throw new Error("Session ended");
     }
-    if (res.status === 204) return null;
+
+    if (res.status === 204) {
+      return null;
+    }
+
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Something went wrong");
+
+    if (!res.ok) {
+      throw new Error(data.error || "Something went wrong");
+    }
+
     return data;
   }
+
+  /* ============================================================
+     LOAD SWEETS
+  ============================================================ */
 
   async function loadSweets() {
     try {
       setSweets(await call("/sweets"));
     } catch (e) {
-      if (e.message !== "Session ended")
-        setMessage({ type: "error", text: e.message });
+      if (e.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: e.message,
+        });
+      }
     }
   }
 
+  /* ============================================================
+     LOAD DELETED SWEETS
+  ============================================================ */
+
+  async function loadDeletedSweets() {
+    try {
+      setDeletedSweets(await call("/deletedSweets"));
+    } catch (e) {
+      if (e.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: e.message,
+        });
+      }
+    }
+  }
+
+  /* ============================================================
+     LOGIN
+  ============================================================ */
+
   async function login(e) {
     e.preventDefault();
+
     setBusy(true);
     setMessage(null);
+
     try {
       const data = await call("/admin/login", {
         method: "POST",
-        body: { password },
+        body: {
+          password,
+        },
       });
+
       sessionStorage.setItem("adminToken", data.token);
+
       setToken(data.token);
       setPassword("");
     } catch (err) {
-      setMessage({ type: "error", text: err.message });
+      setMessage({
+        type: "error",
+        text: err.message,
+      });
     }
+
     setBusy(false);
   }
+
+  /* ============================================================
+     FORM
+  ============================================================ */
 
   function openNewForm() {
     setMessage(null);
@@ -143,6 +237,7 @@ export default function AdminPage() {
 
   function startEdit(s) {
     setMessage(null);
+
     setForm({
       id: s.id,
       name: s.name,
@@ -153,11 +248,13 @@ export default function AdminPage() {
       image: s.image ?? "",
       emoji: s.emoji ?? "",
       tint: s.tint ?? "#F7DCE0",
+
       sizes: (s.sizes ?? []).map((z) => ({
         label: z.label,
         price: String(z.price),
       })),
     });
+
     setIsModalOpen(true);
   }
 
@@ -166,108 +263,304 @@ export default function AdminPage() {
     setForm(emptyForm);
   }
 
+  /* ============================================================
+     PHOTO UPLOAD
+  ============================================================ */
+
   async function onPhotoUpload(e) {
     const file = e.target.files?.[0];
+
     e.target.value = "";
+
     if (!file) return;
+
     setBusy(true);
     setMessage(null);
+
     try {
       const fd = new FormData();
+
       fd.append("photo", file);
-      const data = await call("/uploads", { method: "POST", form: fd });
-      setForm((prev) => ({ ...prev, image: data.path }));
+
+      const data = await call("/uploads", {
+        method: "POST",
+        form: fd,
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        image: data.path,
+      }));
+
       setMessage({
         type: "success",
         text: "Photo uploaded! Save to apply changes.",
       });
     } catch (err) {
-      if (err.message !== "Session ended")
-        setMessage({ type: "error", text: err.message });
+      if (err.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: err.message,
+        });
+      }
     }
+
     setBusy(false);
   }
 
+  /* ============================================================
+     SAVE
+  ============================================================ */
+
   async function handleSave(e) {
     e.preventDefault();
+
     setBusy(true);
     setMessage(null);
 
     const sizes = form.sizes
       .filter((s) => s.label.trim() && s.price !== "")
-      .map((s) => ({ label: s.label.trim(), price: Number(s.price) }));
+      .map((s) => ({
+        label: s.label.trim(),
+        price: Number(s.price),
+      }));
 
     const payload = {
       name: form.name,
       category: form.category,
       description: form.description,
+
       price: form.price === "" ? null : Number(form.price),
+
       details: form.details.trim() || null,
+
       image: form.image || null,
+
       emoji: form.emoji.trim() || null,
+
       tint: form.tint || null,
+
       sizes: sizes.length ? sizes : null,
     };
 
     try {
-      if (form.id)
-        await call(`/sweets/${form.id}`, { method: "PUT", body: payload });
-      else await call("/sweets", { method: "POST", body: payload });
+      if (form.id) {
+        await call(`/sweets/${form.id}`, {
+          method: "PUT",
+          body: payload,
+        });
+      } else {
+        await call("/sweets", {
+          method: "POST",
+          body: payload,
+        });
+      }
+
       await loadSweets();
+
       closeModal();
+
       setMessage({
         type: "success",
         text: `"${payload.name}" saved successfully!`,
       });
     } catch (err) {
-      if (err.message !== "Session ended")
-        setMessage({ type: "error", text: err.message });
+      if (err.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: err.message,
+        });
+      }
     }
+
     setBusy(false);
   }
+
+  /* ============================================================
+     DELETE
+  ============================================================ */
 
   async function handleDelete(s) {
-    // if (!window.confirm(`Delete "${s.name}"? This action cannot be undone.`))
-    //   return;
+    debugger;
     setBusy(true);
     setMessage(null);
+
     try {
-      await call(`/sweets/${s.id}`, { method: "DELETE" });
+      await call(`/sweets/${s.id}`, {
+        method: "DELETE",
+      });
+
       await loadSweets();
-      if (form.id === s.id) closeModal();
-      setMessage({ type: "success", text: `"${s.name}" removed.` });
+      await loadDeletedSweets();
+
+      if (form.id === s.id) {
+        closeModal();
+      }
+
+      setMessage({
+        type: "success",
+        text: `"${s.name}" removed.`,
+      });
     } catch (err) {
-      if (err.message !== "Session ended")
-        setMessage({ type: "error", text: err.message });
+      if (err.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: err.message,
+        });
+      }
     }
+
     setBusy(false);
   }
 
-  const confirmDelete = (id) => {
+  function confirmDelete(id) {
     setDeleteConfirm({
       open: true,
       id,
     });
-  };
+  }
 
-  const handleConfirmDelete = async () => {
-    const id = deleteConfirm.id;
+  async function handleConfirmDelete() {
+    debugger;
+    const selectedItem = deleteConfirm.id;
 
     setDeleteConfirm({
       open: false,
       id: null,
     });
 
-    await handleDelete(id);
-  };
+    /*
+     * Find the actual item before deleting.
+     * This keeps handleDelete working with the item object.
+     */
+    const item = sweets.find((s) => s.id === selectedItem?.id);
 
-  const categories = [...new Set(sweets.map((s) => s.category))];
+    if (item) {
+      await handleDelete(item);
+    }
+  }
 
-  if (!ready) return null;
+  /* ============================================================
+     ENABLE DELETED ITEM
+  ============================================================ */
+
+  async function handleEnable(item) {
+    setEnablingId(item.id);
+
+    try {
+      await call(`/sweets/${item.id}/enable`, {
+        method: "PATCH",
+      });
+
+      await loadSweets();
+      await loadDeletedSweets();
+
+      setMessage({
+        type: "success",
+        text: `"${item.name}" enabled successfully.`,
+      });
+    } catch (err) {
+      if (err.message !== "Session ended") {
+        setMessage({
+          type: "error",
+          text: err.message,
+        });
+      }
+    } finally {
+      setEnablingId(null);
+    }
+  }
+
+  /* ============================================================
+     MESSAGE AUTO CLOSE
+  ============================================================ */
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timer = setTimeout(() => {
+      setMessage(null);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  /* ============================================================
+     STATUS
+  ============================================================ */
+
+  const isDeletedSelected = selectedStatus === "deleted-items";
+
+  // const categories = [
+  //   ...new Set(sweets.map((s) => s.category).filter(Boolean)),
+  // ];
+
+  const categories = [
+    "Boxes",
+    "Chocolates",
+    "Cakes",
+    "Pastries",
+    "Cookies",
+    "Cold treats",
+  ];
+
+  const Status = [
+    {
+      id: "total-items",
+      label: "Total Items",
+      value: sweets.length,
+      icon: <BakeryDiningIcon />,
+      iconBgColor: "#fff7ed",
+      iconColor: "#d97706",
+      clickable: true,
+    },
+
+    {
+      id: "deleted-items",
+      label: "Deleted Items",
+      value: deletedSweets.length,
+      icon: <CategoryIcon />,
+      iconBgColor: "#fef2f2",
+      iconColor: "#e43939",
+      clickable: true,
+    },
+
+    {
+      id: "categories",
+      label: "Active Categories",
+      value: categories.length,
+      icon: <CategoryIcon />,
+      iconBgColor: "#f0fdf4",
+      iconColor: "#16a34a",
+      clickable: false,
+    },
+  ];
+
+  function handleStatusClick(stat) {
+    setSelectedStatus(stat.id);
+  }
+
+  /* ============================================================
+     LOADING
+  ============================================================ */
+
+  if (!ready) {
+    return null;
+  }
+
+  /* ============================================================
+     API ERROR
+  ============================================================ */
 
   if (!API) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container
+        maxWidth="md"
+        sx={{
+          mt: 4,
+          px: 2,
+        }}
+      >
         <Alert severity="error">
           <strong>Configuration Missing:</strong> NEXT_PUBLIC_API_URL is missing
           in .env.local.
@@ -276,17 +569,23 @@ export default function AdminPage() {
     );
   }
 
+  /* ============================================================
+     LOGIN SCREEN
+  ============================================================ */
+
   if (!token) {
     return (
       <Box
         sx={{
           minHeight: "100vh",
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           background:
             "linear-gradient(135deg, #fff7ed 0%, #fef3c7 50%, #fed7aa 100%)",
-          p: 2,
+          p: { xs: 1.5, sm: 2 },
+          boxSizing: "border-box",
         }}
       >
         <Paper
@@ -304,7 +603,7 @@ export default function AdminPage() {
             bgcolor: "#ffffff",
           }}
         >
-          {/* Header Badge Section */}
+          {/* Login Header */}
           <Box
             sx={{
               bgcolor: "#fef3c7",
@@ -329,13 +628,22 @@ export default function AdminPage() {
             >
               🧁
             </Avatar>
+
             <Typography
               variant="h5"
               fontWeight="800"
-              sx={{ color: "#78350f", letterSpacing: "-0.5px" }}
+              sx={{
+                color: "#78350f",
+                letterSpacing: "-0.5px",
+                fontSize: {
+                  xs: "1.35rem",
+                  sm: "1.5rem",
+                },
+              }}
             >
               HaYaan&apos;s Bakery
             </Typography>
+
             <Typography
               variant="body2"
               sx={{
@@ -348,13 +656,17 @@ export default function AdminPage() {
                 gap: 0.5,
               }}
             >
-              <StorefrontRoundedIcon sx={{ fontSize: 16 }} /> Admin Management
-              Portal
+              <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
+              Admin Management Portal
             </Typography>
           </Box>
 
-          {/* Form Content Body */}
-          <Box sx={{ p: 4 }}>
+          {/* Login Body */}
+          <Box
+            sx={{
+              p: { xs: 2.5, sm: 4 },
+            }}
+          >
             <Typography
               variant="body1"
               fontWeight="600"
@@ -375,45 +687,65 @@ export default function AdminPage() {
               autoFocus
               required
               margin="none"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlinedIcon
+                        sx={{
+                          color: "#d97706",
+                        }}
+                      />
+                    </InputAdornment>
+                  ),
+
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPw((v) => !v)}
+                        edge="end"
+                        size="small"
+                        aria-label={showPw ? "Hide password" : "Show password"}
+                      >
+                        {showPw ? (
+                          <VisibilityOffIcon
+                            sx={{
+                              fontSize: 20,
+                            }}
+                          />
+                        ) : (
+                          <VisibilityIcon
+                            sx={{
+                              fontSize: 20,
+                            }}
+                          />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2.5,
                   bgcolor: "#fafafa",
+
                   transition: "all 0.2s ease-in-out",
+
                   "&:hover": {
                     bgcolor: "#ffffff",
                   },
+
                   "&.Mui-focused": {
                     bgcolor: "#ffffff",
+
                     boxShadow: "0 0 0 4px rgba(217, 119, 6, 0.12)",
+
                     "& .MuiOutlinedInput-notchedOutline": {
                       borderColor: "#d97706",
                     },
                   },
                 },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlinedIcon sx={{ color: "#d97706" }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPw((v) => !v)}
-                      edge="end"
-                      size="small"
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                    >
-                      {showPw ? (
-                        <VisibilityOffIcon sx={{ fontSize: 20 }} />
-                      ) : (
-                        <VisibilityIcon sx={{ fontSize: 20 }} />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
               }}
             />
 
@@ -448,21 +780,32 @@ export default function AdminPage() {
                 fontWeight: 700,
                 textTransform: "none",
                 bgcolor: "#d97706",
+
                 boxShadow: "0 4px 12px rgba(217, 119, 6, 0.25)",
+
                 transition: "all 0.2s ease-in-out",
+
                 "&:hover": {
                   bgcolor: "#b45309",
                   boxShadow: "0 6px 16px rgba(180, 83, 9, 0.35)",
                   transform: "translateY(-1px)",
                 },
+
                 "&:active": {
                   transform: "translateY(0)",
                 },
               }}
             >
               {busy ? (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
                   <CircularProgress size={20} color="inherit" />
+
                   <span>Authenticating...</span>
                 </Box>
               ) : (
@@ -475,9 +818,24 @@ export default function AdminPage() {
     );
   }
 
+  /* ============================================================
+     ADMIN DASHBOARD
+  ============================================================ */
+
   return (
-    <Box sx={{ bgcolor: "#fafaf9", minHeight: "100vh", pb: 8 }}>
-      {/* Top Header Navbar */}
+    <Box
+      sx={{
+        bgcolor: "#fafaf9",
+        minHeight: "100vh",
+        pb: 8,
+        width: "100%",
+        overflowX: "hidden",
+      }}
+    >
+      {/* ========================================================
+          TOP HEADER
+      ======================================================== */}
+
       <AppBar
         position="sticky"
         elevation={0}
@@ -488,54 +846,220 @@ export default function AdminPage() {
           color: "text.primary",
         }}
       >
-        <Container maxWidth="xl">
+        <Container
+          maxWidth="xl"
+          sx={{
+            px: {
+              xs: 1.5,
+              sm: 2,
+              md: 3,
+            },
+          }}
+        >
           <Toolbar
             disableGutters
-            sx={{ justifyContent: "space-between", py: 1 }}
+            sx={{
+              justifyContent: "space-between",
+
+              py: {
+                xs: 1,
+                sm: 1.5,
+              },
+
+              gap: {
+                xs: 1.5,
+                sm: 2,
+              },
+
+              flexDirection: {
+                xs: "column",
+                sm: "row",
+              },
+
+              alignItems: {
+                xs: "stretch",
+                sm: "center",
+              },
+            }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Avatar
+            {/* ==================================================
+                BRAND
+            ================================================== */}
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+
+                gap: {
+                  xs: 1,
+                  sm: 1.5,
+                },
+
+                width: {
+                  xs: "100%",
+                  sm: "auto",
+                },
+
+                minWidth: 0,
+              }}
+            >
+              <Box
                 sx={{
-                  bgcolor: "#fff7ed",
-                  color: "#d97706",
-                  border: "1px solid #fed7aa",
-                  width: 44,
-                  height: 44,
-                  fontSize: "1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: {
+                    xs: 1,
+                    sm: 1.5,
+                  },
+                  width: {
+                    xs: "100%",
+                    sm: "auto",
+                  },
+                  minWidth: 0,
                 }}
               >
-                🧁
-              </Avatar>
-              <Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography
-                    variant="h6"
-                    fontWeight="800"
-                    sx={{ color: "#451a03", letterSpacing: "-0.3px" }}
-                  >
-                    HaYaan&apos;s Bakery
-                  </Typography>
-                  <Chip
-                    label="Admin Portal"
-                    size="small"
-                    icon={<AdminPanelSettingsIcon style={{ fontSize: 14 }} />}
+                <Box
+                  sx={{
+                    width: {
+                      xs: 40,
+                      sm: 44,
+                    },
+                    height: {
+                      xs: 40,
+                      sm: 44,
+                    },
+                    borderRadius: 2,
+                    bgcolor: "#fff7ed",
+                    border: "1px solid #fed7aa",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="HaYaan's Cafe And Bakery"
                     sx={{
-                      bgcolor: "#fff7ed",
-                      color: "#b45309",
-                      fontWeight: 700,
-                      fontSize: "0.7rem",
-                      height: 22,
-                      border: "1px solid #fde68a",
+                      width: "80%",
+                      height: "80%",
+                      objectFit: "contain",
+                      display: "block",
                     }}
                   />
                 </Box>
-                <Typography variant="caption" color="text.secondary">
-                  Catalog & Menu Management
-                </Typography>
+
+                <Box
+                  sx={{
+                    minWidth: 0,
+                    flex: 1,
+                  }}
+                >
+                  {/* Title + Admin Badge */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: {
+                        xs: "flex-start",
+                        sm: "center",
+                      },
+
+                      gap: 1,
+
+                      flexWrap: {
+                        xs: "wrap",
+                        sm: "nowrap",
+                      },
+
+                      minWidth: 0,
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
+                      fontWeight="800"
+                      sx={{
+                        color: "#451a03",
+                        letterSpacing: "-0.3px",
+
+                        fontSize: {
+                          xs: "1rem",
+                          sm: "1.25rem",
+                        },
+
+                        lineHeight: 1.3,
+
+                        whiteSpace: {
+                          xs: "normal",
+                          sm: "nowrap",
+                        },
+
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      HaYaan&apos;s Cafe And Bakery
+                    </Typography>
+
+                    <Chip
+                      label="Admin Portal"
+                      size="small"
+                      icon={
+                        <AdminPanelSettingsIcon
+                          style={{
+                            fontSize: 14,
+                          }}
+                        />
+                      }
+                      sx={{
+                        bgcolor: "#fff7ed",
+                        color: "#b45309",
+                        fontWeight: 700,
+                        fontSize: "0.7rem",
+                        height: 22,
+                        border: "1px solid #fde68a",
+
+                        flexShrink: 0,
+                      }}
+                    />
+                  </Box>
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: "block",
+                      mt: 0.25,
+                    }}
+                  >
+                    Catalog & Menu Management
+                  </Typography>
+                </Box>
               </Box>
             </Box>
 
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+            {/* ==================================================
+                HEADER ACTIONS
+            ================================================== */}
+
+            <Box
+              sx={{
+                display: "flex",
+                gap: {
+                  xs: 0.75,
+                  sm: 1.5,
+                },
+
+                alignItems: "center",
+
+                width: {
+                  xs: "100%",
+                  sm: "auto",
+                },
+              }}
+            >
+              {/* Add Item */}
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -544,14 +1068,34 @@ export default function AdminPage() {
                   bgcolor: "#d97706",
                   fontWeight: 700,
                   borderRadius: 2,
-                  px: 2.5,
+
+                  px: {
+                    xs: 1.25,
+                    sm: 2.5,
+                  },
+
+                  flex: {
+                    xs: 1,
+                    sm: "initial",
+                  },
+
+                  minWidth: 0,
+
                   textTransform: "none",
+
+                  whiteSpace: "nowrap",
+
                   boxShadow: "0 2px 8px rgba(217, 119, 6, 0.25)",
-                  "&:hover": { bgcolor: "#b45309" },
+
+                  "&:hover": {
+                    bgcolor: "#b45309",
+                  },
                 }}
               >
                 Add Item
               </Button>
+
+              {/* Live Site */}
               <Button
                 variant="outlined"
                 href="/"
@@ -563,12 +1107,33 @@ export default function AdminPage() {
                   borderColor: "#e7e5e4",
                   color: "#44403c",
                   fontWeight: 600,
+
+                  flex: {
+                    xs: 1,
+                    sm: "initial",
+                  },
+
+                  minWidth: 0,
+
+                  px: {
+                    xs: 1.25,
+                    sm: 2,
+                  },
+
                   textTransform: "none",
-                  "&:hover": { borderColor: "#a8a29e", bgcolor: "#f5f5f4" },
+
+                  whiteSpace: "nowrap",
+
+                  "&:hover": {
+                    borderColor: "#a8a29e",
+                    bgcolor: "#f5f5f4",
+                  },
                 }}
               >
                 Live Site
               </Button>
+
+              {/* Logout */}
               <IconButton
                 onClick={() => logout()}
                 title="Log Out"
@@ -577,8 +1142,17 @@ export default function AdminPage() {
                   color: "#dc2626",
                   border: "1px solid #fecaca",
                   borderRadius: 2,
-                  p: 1,
-                  "&:hover": { bgcolor: "#fee2e2" },
+
+                  p: {
+                    xs: 0.9,
+                    sm: 1,
+                  },
+
+                  flexShrink: 0,
+
+                  "&:hover": {
+                    bgcolor: "#fee2e2",
+                  },
                 }}
               >
                 <LogoutIcon fontSize="small" />
@@ -588,139 +1162,164 @@ export default function AdminPage() {
         </Container>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ mt: 4 }}>
-        {/* Quick Stats Overview Section */}
+      {/* ========================================================
+          MAIN CONTENT
+      ======================================================== */}
+
+      <Container
+        maxWidth="xl"
+        sx={{
+          mt: {
+            xs: 2,
+            sm: 4,
+          },
+
+          px: {
+            xs: 1.5,
+            sm: 2,
+            md: 3,
+          },
+        }}
+      >
+        {/* ======================================================
+            STATUS CARDS
+        ====================================================== */}
+
         <Grid container spacing={2.5} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                borderRadius: 3,
-                bgcolor: "#ffffff",
-                border: "1px solid",
-                borderColor: "rgba(0, 0, 0, 0.06)",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <Avatar
-                sx={{
-                  bgcolor: "#fff7ed",
-                  color: "#d97706",
-                  width: 48,
-                  height: 48,
-                }}
-              >
-                <BakeryDiningIcon />
-              </Avatar>
-              <Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  fontWeight="500"
-                >
-                  Total Items
-                </Typography>
-                <Typography variant="h5" fontWeight="800" color="text.primary">
-                  {sweets.length}
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                borderRadius: 3,
-                bgcolor: "#ffffff",
-                border: "1px solid",
-                borderColor: "rgba(0, 0, 0, 0.06)",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <Avatar
-                sx={{
-                  bgcolor: "#f0fdf4",
-                  color: "#16a34a",
-                  width: 48,
-                  height: 48,
-                }}
-              >
-                <CategoryIcon />
-              </Avatar>
-              <Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  fontWeight="500"
-                >
-                  Active Categories
-                </Typography>
-                <Typography variant="h5" fontWeight="800" color="text.primary">
-                  {categories.length}
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
+          {Status.map((stat) => (
+            <Grid xs={12} sm={6} md={3} key={stat.label}>
+              <StatusCard
+                icon={stat.icon}
+                label={stat.label}
+                value={stat.value}
+                iconBgColor={stat.iconBgColor}
+                iconColor={stat.iconColor}
+                clickable={stat.clickable}
+                onClick={() => handleStatusClick(stat)}
+                active={selectedStatus === stat.id}
+              />
+            </Grid>
+          ))}
         </Grid>
+
+        {/* ======================================================
+            MESSAGE
+        ====================================================== */}
 
         {message && (
           <Fade in={Boolean(message)}>
             <Alert
               severity={message.type === "success" ? "success" : "error"}
               onClose={() => setMessage(null)}
-              sx={{ mb: 3, borderRadius: 2.5 }}
+              sx={{
+                mb: 3,
+                borderRadius: 2.5,
+              }}
             >
               {message.text}
             </Alert>
           </Fade>
         )}
 
-        {/* Inventory Items List */}
-        <SweetsInventoryList
-          sweets={sweets}
-          onEdit={startEdit}
-          // onDelete={handleDelete}
-          onDelete={confirmDelete}
-          busy={busy}
-        />
+        {/* ======================================================
+            INVENTORY
+        ====================================================== */}
 
-        {/* Modal Editor Dialog */}
-        <Dialog
-          open={isModalOpen}
-          onClose={closeModal}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            sx: { borderRadius: 4, overflow: "hidden" },
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
           }}
         >
+          <SweetsInventoryList
+            sweets={isDeletedSelected ? deletedSweets : sweets}
+            mode={isDeletedSelected ? "deleted" : "inventory"}
+            onEdit={startEdit}
+            onEnable={handleEnable}
+            enablingId={enablingId}
+            onDelete={confirmDelete}
+            busy={busy}
+          />
+        </Box>
+
+        {/* ======================================================
+            MODAL EDITOR
+        ====================================================== */}
+
+        <Dialog
+          open={isModalOpen}
+          maxWidth="md"
+          fullWidth
+          fullScreen={false}
+          slotProps={{
+            paper: {
+              sx: {
+                width: "100%",
+                maxWidth: {
+                  xs: "100%",
+                  sm: "900px",
+                },
+                margin: {
+                  xs: 0,
+                  sm: 2,
+                },
+                borderRadius: {
+                  xs: 0,
+                  sm: 4,
+                },
+                overflow: "hidden",
+              },
+            },
+          }}
+        >
+          {/* Modal Header */}
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              px: 3,
+
+              px: {
+                xs: 2,
+                sm: 3,
+              },
+
               py: 2,
+
               borderBottom: "1px solid",
+
               borderColor: "divider",
+
               bgcolor: "#fafafa",
             }}
           >
-            <Typography variant="h6" fontWeight="700">
+            <Typography
+              variant="h6"
+              fontWeight="700"
+              sx={{
+                fontSize: {
+                  xs: "1rem",
+                  sm: "1.25rem",
+                },
+              }}
+            >
               {form.id ? "Edit Bakery Item" : "Create New Item"}
             </Typography>
+
             <IconButton onClick={closeModal} aria-label="close" size="small">
               <CloseIcon />
             </IconButton>
           </Box>
 
-          <DialogContent sx={{ p: 3 }}>
+          <DialogContent
+            sx={{
+              p: {
+                xs: 2,
+                sm: 3,
+              },
+            }}
+          >
             <SweetFormEditor
               form={form}
               setForm={setForm}
@@ -734,6 +1333,10 @@ export default function AdminPage() {
         </Dialog>
       </Container>
 
+      {/* ========================================================
+          DELETE CONFIRMATION
+      ======================================================== */}
+
       <ConfirmDialog
         open={deleteConfirm.open}
         onClose={() => {
@@ -742,8 +1345,8 @@ export default function AdminPage() {
             id: null,
           });
         }}
-        title={"Delete"}
-        content={"Are you sure you want to delete this Item"}
+        title="Delete"
+        content="Are you sure you want to delete this Item"
         action={
           <Button
             variant="contained"

@@ -5,7 +5,7 @@ import multer from "multer";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { listSweets, getSweet, createSweet, updateSweet, deleteSweet } from "./db.js";
+import { listSweets, listDeletedSweets, getSweet, createSweet, updateSweet, deleteSweet, enableSweet } from "./db.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -133,6 +133,8 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/sweets", (_req, res) => res.json(listSweets()));
 
+app.get("/deletedSweets", (_req, res) => res.json(listDeletedSweets()));
+
 app.get("/sweets/:id", (req, res) => {
   const sweet = getSweet(Number(req.params.id));
   if (!sweet) return res.status(404).json({ error: "Sweet not found" });
@@ -163,6 +165,25 @@ app.delete("/sweets/:id", requireAdmin, (req, res) => {
   deleteSweet(id);
   removeUpload(sweet.image);
   res.status(204).end();
+});
+
+app.patch("/sweets/:id/enable", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({
+      error: "Invalid sweet ID",
+    });
+  }
+  const enabled = enableSweet(id);
+  if (!enabled) {
+    return res.status(404).json({
+      error: "Deleted sweet not found",
+    });
+  }
+  res.json({
+    success: true,
+    message: "Sweet enabled successfully",
+  });
 });
 
 app.use((err, _req, res, _next) => {

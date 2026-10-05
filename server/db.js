@@ -79,6 +79,17 @@ export function deleteSweet(id) {
     .run(id).changes > 0;
 }
 
+export function enableSweet(id) {
+  return db
+    .prepare(`
+      UPDATE sweets
+      SET is_deleted = 'N'
+      WHERE id = ?
+        AND is_deleted = 'Y'
+    `)
+    .run(id).changes > 0;
+}
+
 // Fill an empty database with the starter sweets
 if (db.prepare("SELECT COUNT(*) AS n FROM sweets").get().n === 0) {
   db.transaction((items) => items.forEach((s) => insert.run(clean(s))))(seedSweets);

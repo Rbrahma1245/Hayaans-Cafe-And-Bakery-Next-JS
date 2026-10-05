@@ -2,61 +2,90 @@
 
 import { useState, useMemo } from "react";
 import { imageUrl } from "@/lib/image";
+import { FormControlLabel, Switch } from "@mui/material";
 
-export default function SweetsInventoryList({ sweets, onEdit, onDelete, busy }) {
+export default function SweetsInventoryList({
+  sweets,
+  onEdit,
+  onDelete,
+  onEnable,
+  enablingId,
+  busy,
+  mode = "inventory",
+}) {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("name");
 
-  // Extract unique categories
+  const isDeletedMode = mode === "deleted";
+
   const categories = useMemo(() => {
     return ["All", ...new Set(sweets.map((s) => s.category).filter(Boolean))];
   }, [sweets]);
 
-  // Filter & Sort Logic
   const filteredSweets = useMemo(() => {
     return sweets
       .filter((item) => {
+        const searchValue = search.toLowerCase();
+
         const matchesSearch =
-          item.name.toLowerCase().includes(search.toLowerCase()) ||
-          item.description?.toLowerCase().includes(search.toLowerCase());
+          item.name?.toLowerCase().includes(searchValue) ||
+          item.description?.toLowerCase().includes(searchValue);
+
         const matchesCategory =
           selectedCategory === "All" || item.category === selectedCategory;
+
         return matchesSearch && matchesCategory;
       })
       .sort((a, b) => {
-        if (sortBy === "name") return a.name.localeCompare(b.name);
-        if (sortBy === "price") return (a.price || 0) - (b.price || 0);
+        if (sortBy === "name") {
+          return a.name.localeCompare(b.name);
+        }
+
+        if (sortBy === "price") {
+          return (a.price || 0) - (b.price || 0);
+        }
+
         return 0;
       });
   }, [sweets, search, selectedCategory, sortBy]);
 
-  console.log(filteredSweets, 'filteredSweetsfilteredSweets');
-  
-
   return (
     <section className="adm-inventory-section">
-      {/* Top Header & Search Bar */}
+      {/* Toolbar */}
       <div className="inventory-toolbar">
         <div className="toolbar-header">
-          <h2>Inventory Dashboard</h2>
-          <span className="count-badge">{filteredSweets.length} of {sweets.length} items</span>
+          <h2>{isDeletedMode ? "Deleted Items" : "Inventory Dashboard"}</h2>
+
+          <span className="count-badge">
+            {filteredSweets.length} of {sweets.length} items
+          </span>
         </div>
 
         <div className="toolbar-controls">
+          {/* Search */}
           <div className="search-box">
             <span className="search-icon">🔍</span>
+
             <input
               type="text"
               placeholder="Search items..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+
             {search && (
-              <button className="clear-btn" onClick={() => setSearch("")}>✕</button>
+              <button
+                type="button"
+                className="clear-btn"
+                onClick={() => setSearch("")}
+              >
+                ✕
+              </button>
             )}
           </div>
 
+          {/* Filters */}
           <div className="filter-group">
             <select
               value={selectedCategory}
@@ -82,35 +111,65 @@ export default function SweetsInventoryList({ sweets, onEdit, onDelete, busy }) 
         </div>
       </div>
 
-      {/* Grid Display */}
+      {/* Empty State */}
       {filteredSweets.length === 0 ? (
         <div className="empty-inventory-state">
           <span className="empty-icon">🧁</span>
-          <h3>No treats found</h3>
-          <p>Try adjusting your search filters or add a new treat using the form.</p>
+
+          <h3>{isDeletedMode ? "No deleted items" : "No treats found"}</h3>
+
+          <p>
+            {isDeletedMode
+              ? "There are no deleted items to restore."
+              : "Try adjusting your search filters or add a new treat."}
+          </p>
         </div>
       ) : (
         <div className="inventory-grid">
           {filteredSweets.map((item) => (
-            <article className="inventory-card" key={item.id}>
-              {/* Media Preview Box */}
-              <div className="card-media-wrap" style={{ background: item.tint || "#F7DCE0" }}>
+            <article
+              className={`inventory-card ${
+                isDeletedMode ? "deleted-inventory-card" : ""
+              }`}
+              key={item.id}
+            >
+              {/* Image */}
+              <div
+                className="card-media-wrap"
+                style={{
+                  background: item.tint || "#F7DCE0",
+                }}
+              >
                 {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imageUrl(item.image)} alt={item.name} className="card-img" />
+                  <img
+                    src={imageUrl(item.image)}
+                    alt={item.name}
+                    className="card-img"
+                  />
                 ) : (
                   <span className="card-emoji-large">{item.emoji || "🍰"}</span>
                 )}
+
                 <span className="category-pill">{item.category}</span>
+
+                {/* {isDeletedMode && (
+                  <span className="deleted-pill">
+                    Deleted
+                  </span>
+                )} */}
               </div>
 
-              {/* Info Body */}
+              {/* Details */}
               <div className="card-body">
                 <div className="card-title-row">
                   <h3>{item.name}</h3>
+
                   <div className="price-tag">
                     {item.sizes?.length ? (
-                      <span className="multi-size-tag">{item.sizes.length} sizes</span>
+                      <span className="multi-size-tag">
+                        {item.sizes.length} sizes
+                      </span>
                     ) : item.price != null ? (
                       `₹${item.price}`
                     ) : (
@@ -132,24 +191,53 @@ export default function SweetsInventoryList({ sweets, onEdit, onDelete, busy }) 
                 )}
               </div>
 
-              {/* Action Buttons */}
+              {/* Actions */}
               <div className="card-actions">
-                <button
-                  type="button"
-                  className="adm-btn outline small"
-                  onClick={() => onEdit(item)}
-                  disabled={busy}
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  type="button"
-                  className="adm-btn danger-ghost small"
-                  onClick={() => onDelete(item)}
-                  disabled={busy}
-                >
-                  🗑️ Delete
-                </button>
+                {isDeletedMode ? (
+
+                  <FormControlLabel
+                    label="Enable"
+                    labelPlacement="end"
+                    control={
+                      <Switch
+                        checked={false}
+                        onChange={() => onEnable?.(item)}
+                        disabled={enablingId === item.id}
+                        color="success"
+                      />
+                    }
+                    sx={{
+                      margin: 0,
+                      gap: 1,
+
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        color: "#44403c",
+                      },
+                    }}
+                  />
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="adm-btn outline small"
+                      onClick={() => onEdit(item)}
+                      disabled={busy}
+                    >
+                      ✏️ Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      className="adm-btn danger-ghost small"
+                      onClick={() => onDelete(item)}
+                      disabled={busy}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </>
+                )}
               </div>
             </article>
           ))}
