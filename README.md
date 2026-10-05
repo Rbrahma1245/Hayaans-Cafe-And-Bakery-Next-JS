@@ -54,7 +54,7 @@ npm run dev
 
 ## Publishing
 
-- **Website:** Vercel or Netlify. Add the environment variable `NEXT_API_URL` set to your API address (https).
+- **Website:** Vercel or Netlify. Add the environment variable `NEXT_PUBLIC_API_URL` set to your API address (https).
 - **API:** a Node host such as Render or Railway. Set the same variables as in `server/.env`, and set `CLIENT_ORIGIN` to your website address.
 - The database and uploaded photos are files on the server's disk. Use a host with a persistent disk, or the sweets and photos can be lost when the server restarts.
 - GitHub Pages cannot run the admin page or the API, and `npm run deploy` does not work with the sweet pages in this version.

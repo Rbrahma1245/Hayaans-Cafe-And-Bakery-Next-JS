@@ -132,9 +132,14 @@ export default async function SweetPage({ params }) {
                   flexShrink: 0,
                 }}
               >
-                <RestaurantMenuOutlinedIcon
+                <Box
+                  component="img"
+                  src="/logo.png"
+                  alt="HaYaan's Cafe And Bakery"
                   sx={{
-                    fontSize: 19,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                     display: "block",
                   }}
                 />
@@ -691,7 +696,11 @@ export default async function SweetPage({ params }) {
               bgcolor: "#fff",
             }}
           >
-            <Stack direction="row" spacing={1} sx={{alignItems:"flex-start"}} >
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "flex-start" }}
+            >
               <Box
                 sx={{
                   width: 34,
@@ -758,7 +767,11 @@ export default async function SweetPage({ params }) {
               bgcolor: "#fff",
             }}
           >
-            <Stack direction="row" spacing={1} sx={{alignItems:"flex-start"}}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "flex-start" }}
+            >
               <Box
                 sx={{
                   width: 34,
