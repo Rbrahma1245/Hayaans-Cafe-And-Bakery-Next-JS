@@ -40,7 +40,7 @@ import SweetFormEditor from "./SweetFormEditor";
 import SweetsInventoryList from "./SweetsInventoryList";
 import StatusCard from "../../components/StatusCard";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_API_URL;
 
 const emptyForm = {
   id: null,
@@ -562,7 +562,7 @@ export default function AdminPage() {
         }}
       >
         <Alert severity="error">
-          <strong>Configuration Missing:</strong> NEXT_PUBLIC_API_URL is missing
+          <strong>Configuration Missing:</strong> NEXT_API_URL is missing
           in .env.local.
         </Alert>
       </Container>
