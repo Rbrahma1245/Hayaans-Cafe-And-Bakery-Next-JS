@@ -4,9 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",
+    "build": "echo 'No build required for server'",
     "start": "node index.js"
   },
-  "engines": { "node": "20.x" },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
