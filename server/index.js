@@ -3,9 +3,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-import { listSweets, listDeletedSweets, getSweet, createSweet, updateSweet, deleteSweet, enableSweet } from "./db.js";
+import { listSweets, listDeletedSweets, getSweet, createSweet, updateSweet, deleteSweet, enableSweet, supabase } from "./db.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,7 +12,7 @@ app.set("trust proxy", 1);
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
 app.use(express.json({ limit: "100kb" }));
 
-/* ---------- Login tokens (signed, expire after 8 hours) ---------- */
+/* ---------- Login tokens ---------- */
 
 const hmac = (body) =>
   crypto.createHmac("sha256", process.env.TOKEN_SECRET).update(body).digest("base64url");
@@ -51,7 +49,6 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Allow 5 wrong passwords per 15 minutes from one address
 const attempts = new Map();
 
 app.post("/admin/login", (req, res) => {
@@ -72,43 +69,49 @@ app.post("/admin/login", (req, res) => {
   res.json({ token: signToken({ exp: now + 8 * 60 * 60 * 1000 }) });
 });
 
-/* ---------- Photo uploads ---------- */
+/* ---------- Cloud Photo Uploads (Supabase Storage) ---------- */
 
-const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const extensions = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" };
-
+// Use memory storage so we can stream the file buffer directly to Supabase
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (_req, file, cb) => cb(null, crypto.randomUUID() + extensions[file.mimetype]),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) =>
-    extensions[file.mimetype] ? cb(null, true) : cb(new Error("Only JPG, PNG, WebP or GIF photos are allowed")),
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error("Only JPG, PNG, WebP or GIF photos are allowed"));
+  },
 });
 
-function removeUpload(image) {
-  if (typeof image === "string" && image.startsWith("/uploads/")) {
-    fs.unlink(path.join(uploadDir, path.basename(image)), () => {});
-  }
-}
-
-app.use("/uploads", express.static(uploadDir, { maxAge: "7d" }));
-
-app.post("/uploads", requireAdmin, (req, res) => {
-  upload.single("photo")(req, res, (err) => {
-    if (err) {
-      const message = err.code === "LIMIT_FILE_SIZE" ? "Photo must be smaller than 5 MB" : err.message;
-      return res.status(400).json({ error: message });
-    }
+app.post("/uploads", requireAdmin, upload.single("photo"), async (req, res) => {
+  try {
     if (!req.file) return res.status(400).json({ error: "No photo received" });
-    res.status(201).json({ path: `/uploads/${req.file.filename}` });
-  });
+
+    const fileExt = req.file.originalname.split(".").pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `uploads/${fileName}`;
+
+    // Upload to Supabase bucket named 'sweet-images'
+    const { error: uploadError } = await supabase.storage
+      .from("sweet-images")
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from("sweet-images")
+      .getPublicUrl(filePath);
+
+    res.status(201).json({ path: publicUrlData.publicUrl });
+  } catch (err) {
+    console.error("Upload error:", err);
+    res.status(500).json({ error: "Failed to upload image to cloud storage" });
+  }
 });
 
-/* ---------- Sweets ---------- */
+/* ---------- Sweets (Async database routes) ---------- */
 
 function validate(b) {
   if (!b || typeof b !== "object") return "Body must be JSON";
@@ -131,59 +134,79 @@ function validate(b) {
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.get("/sweets", (_req, res) => res.json(listSweets()));
-
-app.get("/deletedSweets", (_req, res) => res.json(listDeletedSweets()));
-
-app.get("/sweets/:id", (req, res) => {
-  const sweet = getSweet(Number(req.params.id));
-  if (!sweet) return res.status(404).json({ error: "Sweet not found" });
-  res.json(sweet);
+app.get("/sweets", async (_req, res) => {
+  console.log("SWEETS API CALl");
+  
+  try {
+    res.json(await listSweets());
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch sweets" });
+  }
 });
 
-app.post("/sweets", requireAdmin, (req, res) => {
+app.get("/deletedSweets", async (_req, res) => {
+  try {
+    res.json(await listDeletedSweets());
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch deleted sweets" });
+  }
+});
+
+app.get("/sweets/:id", async (req, res) => {
+  try {
+    const sweet = await getSweet(Number(req.params.id));
+    if (!sweet) return res.status(404).json({ error: "Sweet not found" });
+    res.json(sweet);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch sweet" });
+  }
+});
+
+app.post("/sweets", requireAdmin, async (req, res) => {
   const error = validate(req.body);
   if (error) return res.status(400).json({ error });
-  res.status(201).json(createSweet(req.body));
+  try {
+    const newSweet = await createSweet(req.body);
+    res.status(201).json(newSweet);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create sweet" });
+  }
 });
 
-app.put("/sweets/:id", requireAdmin, (req, res) => {
+app.put("/sweets/:id", requireAdmin, async (req, res) => {
   const error = validate(req.body);
   if (error) return res.status(400).json({ error });
-  const id = Number(req.params.id);
-  const before = getSweet(id);
-  const sweet = updateSweet(id, req.body);
-  if (!sweet) return res.status(404).json({ error: "Sweet not found" });
-  if (before && before.image !== sweet.image) removeUpload(before.image);
-  res.json(sweet);
+  try {
+    const id = Number(req.params.id);
+    const sweet = await updateSweet(id, req.body);
+    if (!sweet) return res.status(404).json({ error: "Sweet not found" });
+    res.json(sweet);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update sweet" });
+  }
 });
 
-app.delete("/sweets/:id", requireAdmin, (req, res) => {
-  const id = Number(req.params.id);
-  const sweet = getSweet(id);
-  if (!sweet) return res.status(404).json({ error: "Sweet not found" });
-  deleteSweet(id);
-  removeUpload(sweet.image);
-  res.status(204).end();
+app.delete("/sweets/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const success = await deleteSweet(id);
+    if (!success) return res.status(404).json({ error: "Sweet not found" });
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete sweet" });
+  }
 });
 
-app.patch("/sweets/:id/enable", requireAdmin, (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
-    return res.status(400).json({
-      error: "Invalid sweet ID",
-    });
+app.patch("/sweets/:id/enable", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid sweet ID" });
+    const enabled = await enableSweet(id);
+    if (!enabled) return res.status(404).json({ error: "Deleted sweet not found" });
+    res.json({ success: true, message: "Sweet enabled successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to enable sweet" });
   }
-  const enabled = enableSweet(id);
-  if (!enabled) {
-    return res.status(404).json({
-      error: "Deleted sweet not found",
-    });
-  }
-  res.json({
-    success: true,
-    message: "Sweet enabled successfully",
-  });
 });
 
 app.use((err, _req, res, _next) => {

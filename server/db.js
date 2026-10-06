@@ -1,31 +1,23 @@
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
+import { createClient } from '@supabase/supabase-js';
+import "dotenv/config";
 import { seedSweets } from "./seed.js";
 
-const dbPath = process.env.DB_PATH || "./data/cafe.db";
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS sweets (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT NOT NULL,
-    category    TEXT NOT NULL,
-    price       REAL,
-    description TEXT NOT NULL,
-    details     TEXT,
-    image       TEXT,
-    emoji       TEXT,
-    tint        TEXT,
-    sizes       TEXT,
-    is_deleted  TEXT NOT NULL DEFAULT 'N'
-  )
-`);
-
-const toSweet = (row) => (row ? { ...row, sizes: row.sizes ? JSON.parse(row.sizes) : null } : null);
+// Connect to Supabase via HTTPS (bypasses all local TCP/IPv6 DNS issues)
+export const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0,
+      },
+    },
+  }
+);
 
 const clean = (d) => ({
   name: d.name.trim(),
@@ -39,64 +31,94 @@ const clean = (d) => ({
   sizes: d.sizes ? JSON.stringify(d.sizes) : null,
 });
 
-const insert = db.prepare(`
-  INSERT INTO sweets (name, category, price, description, details, image, emoji, tint, sizes)
-  VALUES (@name, @category, @price, @description, @details, @image, @emoji, @tint, @sizes)
-`);
-
-export function listSweets() {
-  return db.prepare("SELECT * FROM sweets WHERE is_deleted = 'N' ORDER BY id").all().map(toSweet);
-}
-export function listDeletedSweets() {
-  return db.prepare("SELECT * FROM sweets WHERE is_deleted = 'Y' ORDER BY id").all().map(toSweet);
+export async function listSweets() {
+  const { data, error } = await supabase
+    .from("sweets")
+    .select("*")
+    .eq("is_deleted", "N")
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return data;
 }
 
-export function getSweet(id) {
-  return toSweet(db.prepare("SELECT * FROM sweets WHERE id = ? AND is_deleted = 'N'").get(id));
+export async function listDeletedSweets() {
+  const { data, error } = await supabase
+    .from("sweets")
+    .select("*")
+    .eq("is_deleted", "Y")
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return data;
 }
 
-export function createSweet(data) {
-  const result = insert.run(clean(data));
-  return getSweet(result.lastInsertRowid);
+export async function getSweet(id) {
+  const { data, error } = await supabase
+    .from("sweets")
+    .select("*")
+    .eq("id", id)
+    .eq("is_deleted", "N")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
-export function updateSweet(id, data) {
-  const result = db
-    .prepare(`UPDATE sweets SET name=@name, category=@category, price=@price, description=@description,
-              details=@details, image=@image, emoji=@emoji, tint=@tint, sizes=@sizes WHERE id=@id AND is_deleted = 'N'`)
-    .run({ ...clean(data), id });
-  return result.changes ? getSweet(id) : null;
+export async function createSweet(data) {
+  const d = clean(data);
+  const { data: inserted, error } = await supabase
+    .from("sweets")
+    .insert([d])
+    .select("id")
+    .single();
+  if (error) throw error;
+  return getSweet(inserted.id);
 }
 
-export function deleteSweet(id) {
-  return db
-    .prepare(`
-      UPDATE sweets
-      SET is_deleted = 'Y'
-      WHERE id = ?
-        AND is_deleted = 'N'
-    `)
-    .run(id).changes > 0;
+export async function updateSweet(id, data) {
+  const d = clean(data);
+  const { data: updated, error } = await supabase
+    .from("sweets")
+    .update(d)
+    .eq("id", id)
+    .eq("is_deleted", "N")
+    .select("id");
+  if (error) throw error;
+  return updated && updated.length > 0 ? getSweet(id) : null;
 }
 
-export function enableSweet(id) {
-  return db
-    .prepare(`
-      UPDATE sweets
-      SET is_deleted = 'N'
-      WHERE id = ?
-        AND is_deleted = 'Y'
-    `)
-    .run(id).changes > 0;
+export async function deleteSweet(id) {
+  const { data, error } = await supabase
+    .from("sweets")
+    .update({ is_deleted: 'Y' })
+    .eq("id", id)
+    .eq("is_deleted", 'N')
+    .select();
+  if (error) throw error;
+  return data && data.length > 0;
 }
 
-// Fill an empty database with the starter sweets
-if (db.prepare("SELECT COUNT(*) AS n FROM sweets").get().n === 0) {
-  db.transaction((items) => items.forEach((s) => insert.run(clean(s))))(seedSweets);
+export async function enableSweet(id) {
+  const { data, error } = await supabase
+    .from("sweets")
+    .update({ is_deleted: 'N' })
+    .eq("id", id)
+    .eq("is_deleted", 'Y')
+    .select();
+  if (error) throw error;
+  return data && data.length > 0;
 }
 
+// Auto-seed table if it's empty
+async function initDb() {
+  const { count, error } = await supabase
+    .from("sweets")
+    .select("*", { count: 'exact', head: true });
+  
+  if (!error && count === 0) {
+    for (const s of seedSweets) {
+      const d = clean(s);
+      await supabase.from("sweets").insert([d]);
+    }
+  }
+}
 
-// db.exec(`
-//   ALTER TABLE sweets
-//   ADD COLUMN is_deleted TEXT NOT NULL DEFAULT 'N'
-// `);
+initDb().catch(console.error);

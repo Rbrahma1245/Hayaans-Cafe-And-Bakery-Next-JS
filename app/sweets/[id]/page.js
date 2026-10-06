@@ -21,6 +21,7 @@ import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlin
 
 import { getSweets, getSweet } from "@/lib/api";
 import { imageUrl } from "@/lib/image";
+import { parseSizes } from "@/utils/const-function";
 
 const PHONE_DISPLAY = "083102 21057";
 const PHONE_LINK = "tel:+918310221057";
@@ -68,7 +69,10 @@ export default async function SweetPage({ params }) {
     notFound();
   }
 
-  const hasSizes = Array.isArray(sweet.sizes) && sweet.sizes.length > 0;
+  const sizes = parseSizes(sweet.sizes);
+  const hasSizes = sizes.length > 0;
+
+  console.log(sweet);
 
   return (
     <Box
@@ -464,6 +468,7 @@ export default async function SweetPage({ params }) {
               )}
 
               {/* SIZES */}
+              {/* SIZES */}
               {hasSizes ? (
                 <Box sx={{ mt: 2 }}>
                   <Typography
@@ -480,9 +485,9 @@ export default async function SweetPage({ params }) {
                   </Typography>
 
                   <Stack spacing={0.7}>
-                    {sweet.sizes.map((size) => (
+                    {sizes.map((size, index) => (
                       <Paper
-                        key={size.label}
+                        key={`${size.label}-${index}`}
                         elevation={0}
                         sx={{
                           px: 1.25,
@@ -503,7 +508,10 @@ export default async function SweetPage({ params }) {
                         <Stack
                           direction="row"
                           spacing={0.7}
-                          sx={{ minWidth: 0, alignItems: "center" }}
+                          sx={{
+                            minWidth: 0,
+                            alignItems: "center",
+                          }}
                         >
                           <ShoppingBagOutlinedIcon
                             sx={{

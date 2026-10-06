@@ -39,11 +39,9 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import SweetFormEditor from "./SweetFormEditor";
 import SweetsInventoryList from "./SweetsInventoryList";
 import StatusCard from "../../components/StatusCard";
+import { parseSizes } from "@/utils/const-function";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
-
-
-console.log(API)
 
 const emptyForm = {
   id: null,
@@ -57,6 +55,10 @@ const emptyForm = {
   tint: "#F7DCE0",
   sizes: [],
 };
+
+/* ============================================================
+   COMPONENT
+============================================================ */
 
 export default function AdminPage() {
   const [token, setToken] = useState(null);
@@ -89,7 +91,9 @@ export default function AdminPage() {
   ============================================================ */
 
   useEffect(() => {
-    setToken(sessionStorage.getItem("adminToken"));
+    const savedToken = sessionStorage.getItem("adminToken");
+
+    setToken(savedToken);
     setReady(true);
   }, []);
 
@@ -128,11 +132,24 @@ export default function AdminPage() {
   async function call(path, { method = "GET", body, form: formData } = {}) {
     const headers = {};
 
+    /*
+     * Authentication
+     */
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    if (body) {
+    /*
+     * IMPORTANT:
+     *
+     * Only set application/json when sending JSON.
+     *
+     * When sending FormData, DO NOT set Content-Type.
+     * The browser automatically sets:
+     *
+     * multipart/form-data; boundary=...
+     */
+    if (body !== undefined) {
       headers["Content-Type"] = "application/json";
     }
 
@@ -140,23 +157,40 @@ export default function AdminPage() {
       method,
       headers,
       cache: "no-store",
-      body: formData ?? (body ? JSON.stringify(body) : undefined),
+
+      body: formData ?? (body !== undefined ? JSON.stringify(body) : undefined),
     });
 
+    /*
+     * Session expired
+     */
     if (res.status === 401 && token) {
       logout("Your session ended. Please log in again.");
 
       throw new Error("Session ended");
     }
 
+    /*
+     * DELETE 204
+     */
     if (res.status === 204) {
       return null;
     }
 
+    /*
+     * Parse response
+     */
     const data = await res.json().catch(() => ({}));
 
+    /*
+     * API error
+     */
     if (!res.ok) {
-      throw new Error(data.error || "Something went wrong");
+      throw new Error(
+        data?.error ||
+          data?.message ||
+          `Request failed with status ${res.status}`,
+      );
     }
 
     return data;
@@ -168,7 +202,9 @@ export default function AdminPage() {
 
   async function loadSweets() {
     try {
-      setSweets(await call("/sweets"));
+      const data = await call("/sweets");
+
+      setSweets(Array.isArray(data) ? data : []);
     } catch (e) {
       if (e.message !== "Session ended") {
         setMessage({
@@ -185,7 +221,9 @@ export default function AdminPage() {
 
   async function loadDeletedSweets() {
     try {
-      setDeletedSweets(await call("/deletedSweets"));
+      const data = await call("/deletedSweets");
+
+      setDeletedSweets(Array.isArray(data) ? data : []);
     } catch (e) {
       if (e.message !== "Session ended") {
         setMessage({
@@ -223,9 +261,9 @@ export default function AdminPage() {
         type: "error",
         text: err.message,
       });
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
   }
 
   /* ============================================================
@@ -234,27 +272,34 @@ export default function AdminPage() {
 
   function openNewForm() {
     setMessage(null);
-    setForm(emptyForm);
+
+    setForm({
+      ...emptyForm,
+      sizes: [],
+    });
+
     setIsModalOpen(true);
   }
 
   function startEdit(s) {
     setMessage(null);
 
+    const sizes = parseSizes(s.sizes);
+
     setForm({
       id: s.id,
-      name: s.name,
-      category: s.category,
+      name: s.name ?? "",
+      category: s.category ?? "",
       price: s.price ?? "",
-      description: s.description,
+      description: s.description ?? "",
       details: s.details ?? "",
       image: s.image ?? "",
       emoji: s.emoji ?? "",
       tint: s.tint ?? "#F7DCE0",
 
-      sizes: (s.sizes ?? []).map((z) => ({
-        label: z.label,
-        price: String(z.price),
+      sizes: sizes.map((z) => ({
+        label: z?.label ?? "",
+        price: z?.price == null ? "" : String(z.price),
       })),
     });
 
@@ -263,7 +308,11 @@ export default function AdminPage() {
 
   function closeModal() {
     setIsModalOpen(false);
-    setForm(emptyForm);
+
+    setForm({
+      ...emptyForm,
+      sizes: [],
+    });
   }
 
   /* ============================================================
@@ -273,23 +322,96 @@ export default function AdminPage() {
   async function onPhotoUpload(e) {
     const file = e.target.files?.[0];
 
+    /*
+     * Allow selecting the same image again later
+     */
     e.target.value = "";
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
+
+    /* ----------------------------------------------------------
+       Validate file type
+    ---------------------------------------------------------- */
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setMessage({
+        type: "error",
+        text: "Only JPG, PNG, WebP or GIF photos are allowed.",
+      });
+
+      return;
+    }
+
+    /* ----------------------------------------------------------
+       Validate file size
+       Backend limit = 5 MB
+    ---------------------------------------------------------- */
+
+    const maxSize = 5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setMessage({
+        type: "error",
+        text: "Photo must be smaller than 5 MB.",
+      });
+
+      return;
+    }
 
     setBusy(true);
     setMessage(null);
 
     try {
+      /*
+       * Create multipart form
+       */
       const fd = new FormData();
 
+      /*
+       * IMPORTANT:
+       *
+       * This must match:
+       *
+       * upload.single("photo")
+       *
+       * in Express.
+       */
       fd.append("photo", file);
 
+      console.log("Uploading photo:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+
+      /*
+       * Upload
+       */
       const data = await call("/uploads", {
         method: "POST",
         form: fd,
       });
 
+      console.log("Upload response:", data);
+
+      /*
+       * Backend should return:
+       *
+       * {
+       *   path: "https://...."
+       * }
+       */
+      if (!data?.path) {
+        throw new Error("Photo uploaded but no image URL was returned.");
+      }
+
+      /*
+       * Save returned public URL in form
+       */
       setForm((prev) => ({
         ...prev,
         image: data.path,
@@ -300,15 +422,17 @@ export default function AdminPage() {
         text: "Photo uploaded! Save to apply changes.",
       });
     } catch (err) {
+      console.error("Photo upload failed:", err);
+
       if (err.message !== "Session ended") {
         setMessage({
           type: "error",
-          text: err.message,
+          text: err.message || "Failed to upload photo.",
         });
       }
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
   }
 
   /* ============================================================
@@ -321,25 +445,28 @@ export default function AdminPage() {
     setBusy(true);
     setMessage(null);
 
-    const sizes = form.sizes
-      .filter((s) => s.label.trim() && s.price !== "")
+    /*
+     * Convert form sizes into API format
+     */
+    const sizes = parseSizes(form.sizes)
+      .filter((s) => s?.label?.trim() && s?.price !== "")
       .map((s) => ({
         label: s.label.trim(),
         price: Number(s.price),
       }));
 
     const payload = {
-      name: form.name,
-      category: form.category,
-      description: form.description,
+      name: form.name.trim(),
+      category: form.category.trim(),
+      description: form.description.trim(),
 
       price: form.price === "" ? null : Number(form.price),
 
-      details: form.details.trim() || null,
+      details: form.details?.trim() ? form.details.trim() : null,
 
-      image: form.image || null,
+      image: form.image?.trim() ? form.image.trim() : null,
 
-      emoji: form.emoji.trim() || null,
+      emoji: form.emoji?.trim() ? form.emoji.trim() : null,
 
       tint: form.tint || null,
 
@@ -374,9 +501,9 @@ export default function AdminPage() {
           text: err.message,
         });
       }
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
   }
 
   /* ============================================================
@@ -384,7 +511,6 @@ export default function AdminPage() {
   ============================================================ */
 
   async function handleDelete(s) {
-    debugger;
     setBusy(true);
     setMessage(null);
 
@@ -411,10 +537,14 @@ export default function AdminPage() {
           text: err.message,
         });
       }
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
   }
+
+  /* ============================================================
+     DELETE CONFIRMATION
+  ============================================================ */
 
   function confirmDelete(id) {
     setDeleteConfirm({
@@ -424,19 +554,21 @@ export default function AdminPage() {
   }
 
   async function handleConfirmDelete() {
-    debugger;
-    const selectedItem = deleteConfirm.id;
+    /*
+     * deleteConfirm.id contains the actual ID.
+     */
+    const selectedId = deleteConfirm.id;
 
     setDeleteConfirm({
       open: false,
       id: null,
     });
+    debugger
 
     /*
-     * Find the actual item before deleting.
-     * This keeps handleDelete working with the item object.
+     * Find the item using the ID.
      */
-    const item = sweets.find((s) => s.id === selectedItem?.id);
+    const item = sweets.find((s) => s.id === selectedId.id);
 
     if (item) {
       await handleDelete(item);
@@ -667,7 +799,10 @@ export default function AdminPage() {
           {/* Login Body */}
           <Box
             sx={{
-              p: { xs: 2.5, sm: 4 },
+              p: {
+                xs: 2.5,
+                sm: 4,
+              },
             }}
           >
             <Typography
@@ -1349,12 +1484,17 @@ export default function AdminPage() {
           });
         }}
         title="Delete"
-        content="Are you sure you want to delete this Item"
+        content="Are you sure you want to delete this Item ?"
         action={
           <Button
             variant="contained"
             color="error"
             onClick={handleConfirmDelete}
+            sx={{
+              borderRadius: 1.5,
+              textTransform: "none",
+              fontWeight: 600,
+            }}
           >
             Delete
           </Button>

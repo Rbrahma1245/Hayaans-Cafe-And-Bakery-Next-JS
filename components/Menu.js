@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Box, Button, Stack, Typography, Pagination } from "@mui/material";
 import SweetCard from "./SweetCard";
+import AppPagination from "./AppPagination";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -17,9 +18,7 @@ export default function Menu({ sweets }) {
 
   // Filter by category
   const visible =
-    active === "All"
-      ? sweets
-      : sweets.filter((s) => s.category === active);
+    active === "All" ? sweets : sweets.filter((s) => s.category === active);
 
   // Total pages
   const pageCount = Math.ceil(visible.length / ITEMS_PER_PAGE);
@@ -113,9 +112,7 @@ export default function Menu({ sweets }) {
 
                   color: isActive ? "#fff" : "#57534e",
 
-                  borderColor: isActive
-                    ? "#d97706"
-                    : "#e7e5e4",
+                  borderColor: isActive ? "#d97706" : "#e7e5e4",
 
                   boxShadow: isActive
                     ? "0 5px 14px rgba(217,119,6,.18)"
@@ -124,22 +121,15 @@ export default function Menu({ sweets }) {
                   transition: "all 0.2s ease",
 
                   "&:hover": {
-                    bgcolor: isActive
-                      ? "#b45309"
-                      : "#fff7ed",
+                    bgcolor: isActive ? "#b45309" : "#fff7ed",
 
-                    borderColor: isActive
-                      ? "#b45309"
-                      : "#fdba74",
+                    borderColor: isActive ? "#b45309" : "#fdba74",
 
-                    color: isActive
-                      ? "#fff"
-                      : "#92400e",
+                    color: isActive ? "#fff" : "#92400e",
                   },
 
                   "&:focus-visible": {
-                    outline:
-                      "3px solid rgba(217,119,6,.25)",
+                    outline: "3px solid rgba(217,119,6,.25)",
                     outlineOffset: 2,
                   },
                 }}
@@ -233,11 +223,7 @@ export default function Menu({ sweets }) {
             }}
           >
             {paginatedSweets.map((sweet, index) => (
-              <SweetCard
-                key={sweet.id}
-                sweet={sweet}
-                index={index}
-              />
+              <SweetCard key={sweet.id} sweet={sweet} index={index} />
             ))}
           </Box>
 
@@ -245,51 +231,13 @@ export default function Menu({ sweets }) {
               PAGINATION
           ========================================= */}
           {pageCount > 1 && (
-            <Stack
-              
-              sx={{
-                mt: {
-                  xs: 4,
-                  sm: 5,
-                },
-                alignItems:"center"
-              }}
-            >
-              <Pagination
-                count={pageCount}
-                page={page}
-                onChange={handlePageChange}
-                color="primary"
-                size="medium"
-                siblingCount={0}
-                boundaryCount={1}
-                sx={{
-                  "& .MuiPaginationItem-root": {
-                    minWidth: 40,
-                    height: 40,
-                    borderRadius: 2,
-                    fontWeight: 700,
-                    color: "#57534e",
-                    borderColor: "#e7e5e4",
-                  },
-
-                  "& .MuiPaginationItem-root:hover": {
-                    bgcolor: "#fff7ed",
-                    color: "#92400e",
-                  },
-
-                  "& .MuiPaginationItem-root.Mui-selected": {
-                    bgcolor: "#d97706",
-                    color: "#fff",
-                    fontWeight: 800,
-
-                    "&:hover": {
-                      bgcolor: "#b45309",
-                    },
-                  },
-                }}
-              />
-            </Stack>
+            <AppPagination
+              page={page}
+              count={pageCount}
+              onChange={handlePageChange}
+              totalItems={visible.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+            />
           )}
         </>
       )}
