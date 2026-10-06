@@ -72,7 +72,6 @@ export default async function SweetPage({ params }) {
   const sizes = parseSizes(sweet.sizes);
   const hasSizes = sizes.length > 0;
 
-  console.log(sweet);
 
   return (
     <Box

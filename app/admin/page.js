@@ -382,11 +382,6 @@ export default function AdminPage() {
        */
       fd.append("photo", file);
 
-      console.log("Uploading photo:", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
 
       /*
        * Upload
@@ -395,8 +390,6 @@ export default function AdminPage() {
         method: "POST",
         form: fd,
       });
-
-      console.log("Upload response:", data);
 
       /*
        * Backend should return:
@@ -563,7 +556,6 @@ export default function AdminPage() {
       open: false,
       id: null,
     });
-    debugger
 
     /*
      * Find the item using the ID.
