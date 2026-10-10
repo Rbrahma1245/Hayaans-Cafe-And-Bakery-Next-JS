@@ -56,30 +56,30 @@ export default function HomeHero() {
 
       {/* ================= FLOATING BAKERY ITEMS ================= */}
 
-      {/* Croissant */}
+      {/* Cake */}
       <Box
         component="span"
         className="bakery-float bakery-float-delay-1"
         aria-hidden="true"
         sx={{
           position: "absolute",
-          top: { xs: "15%", md: "18%" },
+          top: { xs: "5%", md: "10%" },
           left: { xs: "6%", sm: "10%", md: "14%" },
           fontSize: { xs: "1.7rem", sm: "2rem", md: "2.5rem" },
           opacity: 0.9,
         }}
       >
-        🥐
+        🍰
       </Box>
 
-      {/* Donut */}
+      {/* Cookie */}
       <Box
         component="span"
         className="bakery-float bakery-float-delay-2"
         aria-hidden="true"
         sx={{
           position: "absolute",
-          top: "25%",
+          top: "5%",
           right: { xs: "8%", md: "15%" },
           fontSize: { xs: "1.8rem", md: "2.5rem" },
           opacity: 0.8,
@@ -87,25 +87,26 @@ export default function HomeHero() {
           userSelect: "none",
         }}
       >
-        🍩
+        🍪
       </Box>
 
-      {/* Cookie */}
+      {/* Chocolate */}
       <Box
         component="span"
         className="bakery-float bakery-float-delay-3"
         aria-hidden="true"
         sx={{
           position: "absolute",
-          bottom: "20%",
+          bottom: "30%",
           left: { xs: "10%", md: "18%" },
           fontSize: { xs: "1.6rem", md: "2.2rem" },
           opacity: 0.75,
           pointerEvents: "none",
           userSelect: "none",
+          zIndex: 2
         }}
       >
-        🍪
+        🍫
       </Box>
 
       {/* Cupcake */}
@@ -115,7 +116,7 @@ export default function HomeHero() {
         aria-hidden="true"
         sx={{
           position: "absolute",
-          bottom: "18%",
+          bottom: "31%",
           right: { xs: "10%", md: "18%" },
           fontSize: { xs: "1.6rem", md: "2.2rem" },
           opacity: 0.75,

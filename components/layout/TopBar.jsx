@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { AppBar, Badge, Box, Stack, Toolbar, Typography } from "@mui/material";
+import {
+    AppBar,
+    Badge,
+    Box,
+    Stack,
+    Toolbar,
+    Typography,
+} from "@mui/material";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { useCart } from "@/context/CartContext";
 
@@ -13,10 +20,11 @@ function Brand() {
             href="/"
             aria-label="HaYaan's Cafe And Bakery, home"
             direction="row"
-            spacing={1}
+            spacing={{ xs: 0.8, sm: 1 }}
             sx={{
                 alignItems: "center",
                 minWidth: 0,
+                flex: "1 1 auto",
                 textDecoration: "none",
                 color: "inherit",
             }}
@@ -24,9 +32,9 @@ function Brand() {
             {/* Brand Icon */}
             <Box
                 sx={{
-                    width: 38,
-                    height: 38,
-                    minWidth: 38,
+                    width: { xs: 32, sm: 38 },
+                    height: { xs: 32, sm: 38 },
+                    minWidth: { xs: 32, sm: 38 },
                     borderRadius: 2,
                     bgcolor: "#fff7ed",
                     border: "1px solid #fed7aa",
@@ -59,11 +67,23 @@ function Brand() {
                     p: 0,
                     fontWeight: 800,
                     color: "#451a03",
-                    fontSize: { xs: "0.85rem", sm: "1rem" },
-                    lineHeight: 1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    fontSize: {
+                        xs: "0.72rem",
+                        sm: "0.9rem",
+                        md: "1rem",
+                    },
+                    lineHeight: 1.25,
+                    whiteSpace: {
+                        xs: "normal",
+                        sm: "nowrap",
+                    },
+                    overflowWrap: "normal",
+                    wordBreak: "normal",
+                    minWidth: 0,
+                    maxWidth: {
+                        xs: 150,
+                        sm: "none",
+                    },
                 }}
             >
                 HaYaan&apos;s Cafe And Bakery
@@ -89,7 +109,6 @@ function FreshBadge() {
                 flexShrink: 0,
             }}
         >
-            {/* Green status dot */}
             <Box
                 sx={{
                     width: 7,
@@ -117,6 +136,7 @@ function FreshBadge() {
 /* ================= CART BUTTON ================= */
 export function CartButton() {
     const { totalItems, totalPrice, hydrated } = useCart();
+
     const count = hydrated ? totalItems : 0;
     const total = hydrated ? totalPrice : 0;
 
@@ -128,9 +148,10 @@ export function CartButton() {
             sx={{
                 display: "flex",
                 alignItems: "center",
-                gap: 1.2,
-                px: 1.6,
-                py: 0.8,
+                justifyContent: "center",
+                gap: { xs: 0.6, sm: 1.2 },
+                px: { xs: 1, sm: 1.6 },
+                py: { xs: 0.6, sm: 0.8 },
                 borderRadius: 99,
                 textDecoration: "none",
                 bgcolor: "#fff7ed",
@@ -138,7 +159,10 @@ export function CartButton() {
                 border: "1px solid #fed7aa",
                 flexShrink: 0,
                 transition: "all 0.2s ease",
-                "&:hover": { bgcolor: "#ffedd5", borderColor: "#fdba74" },
+                "&:hover": {
+                    bgcolor: "#ffedd5",
+                    borderColor: "#fdba74",
+                },
             }}
         >
             <Badge
@@ -149,12 +173,27 @@ export function CartButton() {
                         bgcolor: "#d97706",
                         color: "#fff",
                         fontWeight: 800,
+                        fontSize: { xs: "0.6rem", sm: "0.7rem" },
+                        minWidth: { xs: 16, sm: 20 },
+                        height: { xs: 16, sm: 20 },
                     },
                 }}
             >
-                <ShoppingBagOutlinedIcon />
+                <ShoppingBagOutlinedIcon
+                    sx={{
+                        fontSize: { xs: 19, sm: 24 },
+                    }}
+                />
             </Badge>
-            <Typography sx={{ fontWeight: 800, fontSize: "0.85rem" }}>
+
+            <Typography
+                component="span"
+                sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: "0.72rem", sm: "0.85rem" },
+                    whiteSpace: "nowrap",
+                }}
+            >
                 ₹{total}
             </Typography>
         </Box>
@@ -174,12 +213,20 @@ export default function TopBar() {
                 color: "#292524",
             }}
         >
-            <Toolbar sx={{ justifyContent: "space-between", gap: 1.5 }}>
+            <Toolbar
+                sx={{
+                    justifyContent: "space-between",
+                    gap: { xs: 1, sm: 1.5 },
+                    px: { xs: 1.5, sm: 2, md: 3 },
+                    minHeight: { xs: 60, sm: 68 },
+                }}
+            >
                 <Box
                     sx={{
                         display: "flex",
                         alignItems: "center",
                         gap: 1.5,
+                        flex: "1 1 auto",
                         minWidth: 0,
                     }}
                 >
