@@ -57,7 +57,7 @@ export default function CartPage() {
     window.open(url, "_blank", "noopener,noreferrer");
 
     // 2. Clear the cart and close the dialog
-    clearCart();
+    // clearCart();
     setCheckoutOpen(false);
     setOrderPlaced(true);
   };
