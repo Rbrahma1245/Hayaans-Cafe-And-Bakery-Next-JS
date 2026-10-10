@@ -22,6 +22,8 @@ import RestaurantMenuOutlinedIcon from "@mui/icons-material/RestaurantMenuOutlin
 import { getSweets, getSweet } from "@/lib/api";
 import { imageUrl } from "@/lib/image";
 import { parseSizes } from "@/utils/const-function";
+import AddToCart from "@/components/menu/AddToCart";
+import { CartButton } from "@/components/layout/TopBar";
 
 const PHONE_DISPLAY = "083102 21057";
 const PHONE_LINK = "tel:+918310221057";
@@ -467,137 +469,16 @@ export default async function SweetPage({ params }) {
               )}
 
               {/* SIZES */}
-              {/* SIZES */}
-              {hasSizes ? (
-                <Box sx={{ mt: 2 }}>
-                  <Typography
-                    fontWeight={800}
-                    sx={{
-                      mb: 0.8,
-                      fontSize: {
-                        xs: "0.9rem",
-                        sm: "0.95rem",
-                      },
-                    }}
-                  >
-                    Choose your size
-                  </Typography>
-
-                  <Stack spacing={0.7}>
-                    {sizes.map((size, index) => (
-                      <Paper
-                        key={`${size.label}-${index}`}
-                        elevation={0}
-                        sx={{
-                          px: 1.25,
-                          py: 1,
-                          borderRadius: 1.8,
-                          border: "1px solid #e7e5e4",
-                          bgcolor: "#fafaf9",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 1,
-                          "&:hover": {
-                            borderColor: "#fdba74",
-                            bgcolor: "#fff7ed",
-                          },
-                        }}
-                      >
-                        <Stack
-                          direction="row"
-                          spacing={0.7}
-                          sx={{
-                            minWidth: 0,
-                            alignItems: "center",
-                          }}
-                        >
-                          <ShoppingBagOutlinedIcon
-                            sx={{
-                              fontSize: 17,
-                              color: "#d97706",
-                            }}
-                          />
-
-                          <Typography
-                            fontWeight={700}
-                            sx={{
-                              fontSize: {
-                                xs: "0.78rem",
-                                sm: "0.84rem",
-                              },
-                            }}
-                          >
-                            {size.label}
-                          </Typography>
-                        </Stack>
-
-                        <Typography
-                          fontWeight={900}
-                          sx={{
-                            color: "#b45309",
-                            fontSize: {
-                              xs: "0.85rem",
-                              sm: "0.9rem",
-                            },
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          ₹{size.price}
-                        </Typography>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </Box>
-              ) : (
-                /* PRICE */
-                <Box
-                  sx={{
-                    mt: 2,
-                    px: 1.5,
-                    py: 1.25,
-                    borderRadius: 2,
-                    bgcolor: "#fff7ed",
-                    border: "1px solid #fed7aa",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      color: "#92400e",
-                      fontWeight: 700,
-                      fontSize: "0.7rem",
-                    }}
-                  >
-                    Today&apos;s price
-                  </Typography>
-
-                  {sweet.price != null ? (
-                    <Typography
-                      sx={{
-                        mt: 0.1,
-                        color: "#b45309",
-                        fontWeight: 900,
-                        fontSize: {
-                          xs: "1.45rem",
-                          sm: "1.7rem",
-                        },
-                      }}
-                    >
-                      ₹{sweet.price}
-                    </Typography>
-                  ) : (
-                    <Typography
-                      sx={{
-                        mt: 0.2,
-                        color: "#92400e",
-                        fontSize: "0.78rem",
-                      }}
-                    >
-                      Ask at the counter for today&apos;s price.
-                    </Typography>
-                  )}
-                </Box>
-              )}
+              <AddToCart
+                sweet={{
+                  id: sweet.id,
+                  name: sweet.name,
+                  price: sweet.price,
+                  image: sweet.image,
+                  emoji: sweet.emoji,
+                }}
+                sizes={sizes}
+              />
 
               {/* ORDER */}
               <Box sx={{ mt: 2 }}>
@@ -811,21 +692,25 @@ export default async function SweetPage({ params }) {
                   Give us a call and we&apos;ll be happy to help.
                 </Typography>
 
-                <Button
-                  component="a"
-                  href={PHONE_LINK}
-                  size="small"
-                  sx={{
-                    mt: 0.3,
-                    p: 0,
-                    color: "#15803d",
-                    fontWeight: 800,
-                    textTransform: "none",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  {PHONE_DISPLAY} →
-                </Button>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Button
+                    component="a"
+                    href={PHONE_LINK}
+                    startIcon={<PhoneRoundedIcon />}
+                    size="small"
+                    sx={{
+                      display: { xs: "none", sm: "inline-flex" },
+                      color: "#b45309",
+                      fontWeight: 700,
+                      textTransform: "none",
+                      minWidth: 0,
+                      px: 1,
+                    }}
+                  >
+                    {PHONE_DISPLAY}
+                  </Button>
+                  <CartButton />
+                </Box>
               </Box>
             </Stack>
           </Paper>

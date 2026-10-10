@@ -137,69 +137,6 @@ export default function HomeHero() {
           mx: "auto",
         }}
       >
-        {/* ================= BRAND ================= */}
-
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{
-            mb: 2.5,
-            width: "100%",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {/* Brand Icon */}
-          <Box
-            sx={{
-              width: 38,
-              height: 38,
-              minWidth: 38,
-              borderRadius: 2,
-              bgcolor: "#fff7ed",
-              border: "1px solid #fed7aa",
-              color: "#d97706",
-
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-
-              flexShrink: 0,
-            }}
-          >
-            <Box
-              component="img"
-              src="/logo.png"
-              alt="HaYaan's Cafe And Bakery"
-              sx={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                display: "block",
-              }}
-            />
-          </Box>
-
-          {/* Brand Name */}
-          <Typography
-            sx={{
-              m: 0,
-              p: 0,
-              fontWeight: 800,
-              color: "#451a03",
-
-              fontSize: {
-                xs: "0.9rem",
-                sm: "1rem",
-              },
-
-              lineHeight: 1,
-              whiteSpace: "nowrap",
-            }}
-          >
-            HaYaan&apos;s Cafe And Bakery
-          </Typography>
-        </Stack>
 
         {/* ================= FRESH BADGE ================= */}
 

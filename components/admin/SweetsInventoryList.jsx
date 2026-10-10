@@ -4,8 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { imageUrl } from "@/lib/image";
 import { FormControlLabel, Switch } from "@mui/material";
 import { parseSizes } from "@/utils/const-function";
-import AppPagination from "@/components/AppPagination";
-import InventoryToolbar from "@/components/InventoryToolbar";
+import AppPagination from "@/components/ui/AppPagination";
+import InventoryToolbar from "@/components/admin/InventoryToolbar";
 
 const ITEMS_PER_PAGE = 12;
 

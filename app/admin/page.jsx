@@ -22,7 +22,7 @@ import {
   Grid,
 } from "@mui/material";
 
-import ConfirmDialog from "@/components/confirm-dialog";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
@@ -36,9 +36,9 @@ import BakeryDiningIcon from "@mui/icons-material/BakeryDining";
 import CategoryIcon from "@mui/icons-material/Category";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
-import SweetFormEditor from "./SweetFormEditor";
-import SweetsInventoryList from "./SweetsInventoryList";
-import StatusCard from "../../components/StatusCard";
+import SweetFormEditor from "../../components/admin/SweetFormEditor";
+import SweetsInventoryList from "../../components/admin/SweetsInventoryList";
+import StatusCard from "../../components/ui/StatusCard";
 import { parseSizes } from "@/utils/const-function";
 
 const API = process.env.NEXT_PUBLIC_API_URL;

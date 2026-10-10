@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Box, Button, Stack, Typography, Pagination } from "@mui/material";
 import SweetCard from "./SweetCard";
-import AppPagination from "./AppPagination";
+import AppPagination from "../ui/AppPagination";
 
 const ITEMS_PER_PAGE = 12;
 
