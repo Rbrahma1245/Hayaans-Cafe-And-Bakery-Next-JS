@@ -83,7 +83,7 @@ export default function CartPage() {
     return (
       <Box
         sx={{
-          minHeight: "65vh",
+          minHeight: "75vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

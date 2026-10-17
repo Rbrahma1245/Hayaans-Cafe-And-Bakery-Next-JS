@@ -373,7 +373,7 @@ export default async function SweetPage({ params }) {
               />
 
               {/* ORDER */}
-              <Box sx={{ mt: 2 }}>
+              {/* <Box sx={{ mt: 2 }}>
                 <Typography
                   color="text.secondary"
                   sx={{
@@ -443,7 +443,7 @@ export default async function SweetPage({ params }) {
                     WhatsApp
                   </Button>
                 </Stack>
-              </Box>
+              </Box> */}
             </Box>
           </Box>
         </Card>
